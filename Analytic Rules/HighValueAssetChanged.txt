@@ -1,0 +1,5 @@
+let highValueAssets = (_GetWatchlist('Rumble-Watchlist') | project id, ip_address, hostname);
+RumbleAlerts
+| where event_type == 'assets-changed'
+| extend name=names[0], address=addresses[0]
+| where (id in (highValueAssets)) or (address in (highValueAssets)) or (name in (highValueAssets))

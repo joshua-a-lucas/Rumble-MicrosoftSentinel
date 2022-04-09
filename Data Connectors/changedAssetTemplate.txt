@@ -1,0 +1,28 @@
+{
+{{#rule.is_scan}}
+    {{#scan}}
+    "new": {{assets_new}},
+    "changed": {{assets_changed}},
+    {{/scan}}
+    "changed_assets": [
+        {{#report.changed}}
+        {
+            "addresses": "{{addresses}}",
+            "alive": "{{alive}}",
+            "created_at": "{{created_at}}",
+            "detected_by": "{{detected_by}}",
+            "domains": "{{domains}}",
+            "first_seen": "{{first_seen}}",
+            "hw": "{{hw}}",
+            "id": "{{id}}",
+            "last_seen": "{{last_seen}}",
+            "names": "{{names}}",
+            "os": "{{os}}",
+            "service_count": "{{service_count}}",
+            "type": "{{type}}",
+            "updated_at": "{{updated_at}}"
+        },
+        {{/report.changed}}
+    ]
+{{/rule.is_scan}}
+}

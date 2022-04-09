@@ -1,0 +1,43 @@
+// Usage Instruction : 
+// Paste below query in Log Analytics, click on the Save button and select as Function from drop down by specifying function name and alias (e.g. RumbleAlerts).
+// Functions usually take 10-15 minutes to activate. You can then use function alias from any other queries (e.g. RumbleAlerts | take 10).
+// Reference :
+// Using functions in Azure monitor log queries : https://docs.microsoft.com/azure/azure-monitor/log-query/functions
+// Tech Community Blog on KQL Functions : https://techcommunity.microsoft.com/t5/Azure-Sentinel/Using-KQL-functions-to-speed-up-analysis-in-Azure-Sentinel/ba-p/712381
+let RumbleAlerts = RumbleAlerts_CL
+| project
+    TimeGenerated,
+    addresses=parse_json(addresses_s),
+    alive=tobool(alive_s),
+    created_at=todatetime(created_at_s),
+    detected_by=detected_by_s,
+    domains=parse_json(domains_s),
+    first_seen=todatetime(first_seen_s),
+    hw=hw_s,
+    id=id_g,
+    last_seen=todatetime(last_seen_s),
+    names=parse_json(names_s),
+    os=os_s,
+    service_count=toint(service_count_s),
+    type=type_s,
+    updated_at=todatetime(updated_at_s),
+    event_type=event_type_s
+| project-reorder
+    TimeGenerated,
+    event_type,
+    id,
+    created_at,
+    updated_at,
+    first_seen,
+    last_seen,
+    alive,
+    detected_by,
+    names,
+    addresses,
+    domains,
+    type,
+    os,
+    hw,
+    service_count
+;RumbleAlerts
+| order by TimeGenerated

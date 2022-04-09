@@ -1,0 +1,6 @@
+// Lists all assets with exposed web interfaces using HTTP/S
+let Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));
+RumbleAssets
+| where TimeGenerated >= Time
+| where service_protocols has 'http'
+| project id, first_seen, last_seen, org_name, site_name, name=names[0], address=addresses[0], os, hw, newest_mac_vendor, service_ports_tcp, service_ports_udp, service_protocols, service_products

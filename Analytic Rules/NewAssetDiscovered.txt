@@ -1,0 +1,3 @@
+RumbleAlerts
+| where event_type == 'new-assets-found'
+| extend name=names[0], address=addresses[0]

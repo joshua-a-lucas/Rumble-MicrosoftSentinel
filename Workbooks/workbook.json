@@ -1,0 +1,198 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| where type != ''\r\n| summarize count() by type",
+        "size": 3,
+        "showAnalytics": true,
+        "title": "Most seen asset types",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart"
+      },
+      "customWidth": "20",
+      "name": "assetTypes",
+      "styleSettings": {
+        "maxWidth": "20"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| where os != ''\r\n| summarize count() by os",
+        "size": 3,
+        "showAnalytics": true,
+        "title": "Most seen operating systems",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart"
+      },
+      "customWidth": "20",
+      "name": "operatingSystems",
+      "styleSettings": {
+        "maxWidth": "20"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| where hw != ''\r\n| summarize count() by hw",
+        "size": 3,
+        "showAnalytics": true,
+        "title": "Most seen hardware",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart"
+      },
+      "customWidth": "20",
+      "name": "hardware",
+      "styleSettings": {
+        "maxWidth": "20"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| where newest_mac_vendor != ''\r\n| summarize count() by newest_mac_vendor",
+        "size": 3,
+        "showAnalytics": true,
+        "title": "Most seen MAC vendors",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart"
+      },
+      "customWidth": "20",
+      "name": "macVendor",
+      "styleSettings": {
+        "maxWidth": "20"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| mv-expand service_products\r\n| summarize Count=count() by Products=tostring(service_products)\r\n| order by Count\r\n| take 7",
+        "size": 3,
+        "showAnalytics": true,
+        "title": "Most seen service products",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart"
+      },
+      "customWidth": "20",
+      "name": "products",
+      "styleSettings": {
+        "maxWidth": "20"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| mv-expand service_ports_tcp\r\n| project toint(service_ports_tcp)\r\n| summarize Count=count() by Ports=tostring(service_ports_tcp)\r\n| order by Count\r\n| take 7",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Most seen TCP ports",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "customWidth": "33",
+      "name": "tcpPorts",
+      "styleSettings": {
+        "maxWidth": "33"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| mv-expand service_ports_udp\r\n| project toint(service_ports_udp)\r\n| summarize Count=count() by Ports=tostring(service_ports_udp)\r\n| order by Count\r\n| take 7",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Most seen UDP ports",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "customWidth": "33",
+      "name": "udpPorts",
+      "styleSettings": {
+        "maxWidth": "33"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| mv-expand service_protocols\r\n| summarize Count=count() by Protocols=tostring(service_protocols)\r\n| order by Count\r\n| take 7",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Most seen protocols",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "customWidth": "33",
+      "name": "protocols",
+      "styleSettings": {
+        "maxWidth": "33"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| where os != ''\r\n| where alive = true\r\n| where scanned = true\r\n| project LastSeen=last_seen,Organization=org_name,Site=site_name,Name=names[0],Address=addresses[0],Type=type,OS=os,Hardware=hw,TCP=service_ports_tcp,UDP=service_ports_udp,Protocols=service_protocols",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Last seen assets",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "gridSettings": {
+          "rowLimit": 50,
+          "filter": true
+        }
+      },
+      "name": "assets"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/1a527a1d-228c-40e6-aafe-12ef15e1f4da/resourcegroups/sentinelhackathon2022-rg/providers/microsoft.operationalinsights/workspaces/sentinelhackathon2022"
+  ],
+  "fromTemplateId": "sentinel-UserWorkbook",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

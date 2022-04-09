@@ -1,0 +1,555 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.5.6.12127",
+      "templateHash": "6626668932903009574"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location to depoloy all resources. Leave this value as-is to inherit the location from the parent resource group."
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "Rumble",
+      "maxLength": 11,
+      "metadata": {
+        "description": "Name of the Azure Functions app used to ingest asset information and alerts from the Rumble API. Will be used to generate the name of associated resources (e.g. Rumble-KeyVault)."
+      }
+    },
+    "rumbleAPIKey": {
+      "type": "secureString",
+      "metadata": {
+        "description": "Rumble Organization API key, used to authenticate the Azure Functions app with the Rumble API when fetching asset information."
+      }
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Log Analytics workspace used by Microsoft Sentinel."
+      }
+    },
+    "logAnalyticsWorkspaceID": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace ID, used to authenticate the Azure Functions app with the Log Analytics API."
+      }
+    },
+    "logAnalyticsWorkspaceKey": {
+      "type": "secureString",
+      "metadata": {
+        "description": "Log Analytics workspace key, used to authenticate the Azure Functions app with the Log Analytics API."
+      }
+    }
+  },
+  "variables": {
+    "storageAccountName": "[format('{0}{1}', toLower(parameters('appName')), uniqueString(resourceGroup().id))]",
+    "appServicePlanName": "[format('{0}-{1}', parameters('appName'), uniqueString(resourceGroup().id))]",
+    "appInsightsName": "[format('{0}-{1}', parameters('appName'), uniqueString(resourceGroup().id))]",
+    "functionAppName": "[format('{0}-FunctionApp', parameters('appName'))]",
+    "keyVaultName": "[format('{0}-KeyVault', parameters('appName'))]",
+    "assetTableName": "RumbleAssets_CL",
+    "alertTableName": "RumbleAlerts_CL",
+    "assetParserName": "RumbleAssets",
+    "alertParserName": "RumbleAlerts"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-08-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled"
+      },
+      "tags": {
+        "[format('hidden-link:/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Web/sites/{2}', subscription().id, resourceGroup().name, variables('functionAppName'))]": "Resource"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2021-03-01",
+      "name": "[variables('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "sku": {
+        "name": "Y1"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[variables('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[format('{0}/rumbleApiKey', variables('keyVaultName'))]",
+      "properties": {
+        "value": "[parameters('rumbleAPIKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[format('{0}/workspaceKey', variables('keyVaultName'))]",
+      "properties": {
+        "value": "[parameters('logAnalyticsWorkspaceKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2021-03-01",
+      "name": "[variables('functionAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "httpsOnly": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2018-11-01",
+      "name": "[format('{0}/appsettings', variables('functionAppName'))]",
+      "properties": {
+        "AzureWebJobsStorage": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-08-01').keys[0].value)]",
+        "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-08-01').keys[0].value)]",
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).InstrumentationKey]",
+        "APPLICATIONINSIGHTS_CONNECTION_STRING": "[format('InstrumentationKey={0}', reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).InstrumentationKey)]",
+        "FUNCTIONS_WORKER_RUNTIME": "powershell",
+        "FUNCTIONS_WORKER_RUNTIME_VERSION": "~7",
+        "FUNCTIONS_EXTENSION_VERSION": "~3",
+        "rumbleApiKey": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[0], split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[1])).secretUri)]",
+        "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
+        "workspaceKey": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[0], split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[1])).secretUri)]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[0], split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[1])]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[0], split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-10-01-preview",
+      "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceGroup().id, subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6'))]",
+      "properties": {
+        "description": "[format('Role required for {0} to access secrets in {1}', variables('functionAppName'), variables('keyVaultName'))]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2021-03-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.SecurityInsights/dataConnectors",
+      "apiVersion": "2021-09-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('logAnalyticsWorkspaceName'))]",
+      "name": "Rumble-DataConnector",
+      "kind": "GenericUI",
+      "properties": {
+        "connectorUiConfig": {
+          "availability": {
+            "isPreview": true,
+            "status": "1"
+          },
+          "connectivityCriteria": [
+            {
+              "type": "IsConnectedQuery",
+              "value": [
+                "[format('{0}\n| summarize LastLogReceived = max(TimeGenerated)\n| project IsConnected = LastLogReceived > ago(30d)', variables('assetTableName'))]"
+              ]
+            }
+          ],
+          "dataTypes": [
+            {
+              "lastDataReceivedQuery": "[format('{0}\n| summarize LastLogReceived = max(TimeGenerated)\n| where isnotempty(LastLogReceived)', variables('assetTableName'))]",
+              "name": "[variables('assetTableName')]"
+            },
+            {
+              "lastDataReceivedQuery": "[format('{0}\n| summarize LastLogReceived = max(TimeGenerated)\n| where isnotempty(LastLogReceived)', variables('alertTableName'))]",
+              "name": "[variables('alertTableName')]"
+            }
+          ],
+          "descriptionMarkdown": "The [Rumble](https://www.rumble.run/) data connector provides the ability to ingest a daily export of assets from the Rumble API, as well as alerts when new devices are detected on the network.",
+          "graphQueries": [
+            {
+              "baseQuery": "[variables('assetTableName')]",
+              "legend": "Rumble Assets",
+              "metricName": "Total data received\""
+            },
+            {
+              "baseQuery": "[variables('alertTableName')]",
+              "legend": "Rumble Alerts",
+              "metricName": "Total data received\""
+            }
+          ],
+          "graphQueriesTableName": "[variables('assetTableName')]",
+          "instructionSteps": [
+            {
+              "title": "",
+              "description": ">**Note:** The Rumble Network Discovery data connector uses [Azure Functions](https://azure.microsoft.com/pricing/details/functions/) to ingest asset information and alerts into Microsoft Sentinel, as well as [Key Vault](https://azure.microsoft.com/en-us/pricing/details/key-vault/) to securely store secrets, which may result in additional charges."
+            },
+            {
+              "title": "1. Create a Rumble Organization API key",
+              "description": "1. Log in to the [Rumble console](https://console.rumble.run/)\n2. Navigate to [Organizations](https://console.rumble.run/organizations) and select your organization\n3. Under API tokens, click Generate API Key and copy the token value"
+            },
+            {
+              "title": "2. Copy your Log Analytics workspace ID, key and name",
+              "description": "1. Copy your Log Analytics workspace ID and Key, as provided below\n2. Make note of your Microsoft Sentinel workspace name",
+              "instructions": [
+                {
+                  "parameters": {
+                    "fillWith": [
+                      "WorkspaceId"
+                    ],
+                    "label": "Log Analytics workspace ID"
+                  },
+                  "type": "CopyableLabel"
+                },
+                {
+                  "parameters": {
+                    "fillWith": [
+                      "PrimaryKey"
+                    ],
+                    "label": "Log Analytics primary key"
+                  },
+                  "type": "CopyableLabel"
+                }
+              ]
+            },
+            {
+              "title": "3. Deploy the Azure Resource Manager (ARM) template",
+              "description": "1. Click the **Deploy to Azure** button below\n\n[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://google.com)\n2. Select your desired **Subscription**, **Resource Group** and **Location**\n3. Enter the **Rumble API key**, *Workspace name*, **Workspace ID** and **Workspace key**\n4. Click **Review + create**"
+            },
+            {
+              "title": "4. Create a Rumble alert template",
+              "description": "1. Instructions coming soon..."
+            }
+          ],
+          "permissions": {
+            "customs": [
+              {
+                "description": "A Rumble Organisation API key is required to ingest asset information. [Refer to the Rumble documentation for instructions on how to create an Organization API key](https://www.rumble.run/docs/organization-api/).",
+                "name": "Rumble Organization API key"
+              },
+              {
+                "description": "Read and Write permissions to create an Azure Functions app is required to create the data connector. [Refer to the Microsoft documentation to learn more about Azure Functions](https://docs.microsoft.com/azure/azure-functions/).",
+                "name": "Azure Functions (Microsoft.Web/Sites)"
+              }
+            ],
+            "resourceProvider": [
+              {
+                "permissionsDisplayText": "Read and Write permissions on the Log Analytics workspace are required to enable the data connector.",
+                "provider": "Microsoft.OperationalInsights/workspaces",
+                "providerDisplayName": "Workspace",
+                "requiredPermissions": {
+                  "delete": true,
+                  "read": true,
+                  "write": true
+                },
+                "scope": "Workspace"
+              },
+              {
+                "permissionsDisplayText": "Read permissions to the Log Analytics workspace keys are required. [Refer to the Microsoft documentation to learn more about Log Analytics workspace keys](https://docs.microsoft.com/azure/azure-monitor/platform/agent-windows#obtain-workspace-id-and-key).",
+                "provider": "Microsoft.OperationalInsights/workspaces",
+                "providerDisplayName": "Keys",
+                "requiredPermissions": {
+                  "action": true
+                },
+                "scope": "Workspace"
+              }
+            ]
+          },
+          "publisher": "Josh Lucas",
+          "sampleQueries": [
+            {
+              "description": "Summarize the most common asset operating systems in a pie chart",
+              "query": "let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\nRumbleAssets\n| where TimeGenerated >= LastLog\n| where os != \"\"\n| summarize count() by os\n|render piechart"
+            },
+            {
+              "description": "List all newly-discovered assets",
+              "query": "RumbleAlerts\n| where event_type == \"new-assets-found\"\n| project TimeGenerated, detected_by, names, addresses, type, os, hw, service_count"
+            }
+          ],
+          "title": "Rumble Network Discovery"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), 'Rumble-ExposedWebInterfaces')]",
+      "properties": {
+        "category": "Rumble",
+        "displayName": "(Rumble) Assets with exposed web interfaces",
+        "query": "// Lists all assets with exposed web interfaces using HTTP/S\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where service_protocols has 'http'\r\n| project id, first_seen, last_seen, org_name, site_name, name=names[0], address=addresses[0], os, hw, newest_mac_vendor, service_ports_tcp, service_ports_udp, service_protocols, service_products",
+        "version": 1
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), 'Rumble-WindowsAssetsWithoutLogging')]",
+      "properties": {
+        "category": "Rumble",
+        "displayName": "(Rumble) Windows assets without security event logging",
+        "query": "// Get all Windows assets that have not sent security event logs to Microsoft Sentinel in the last day\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\n//let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];\r\nlet AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(1d) | distinct Computer | extend name=split(Computer, '.')[0]);\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where os contains 'Windows'\r\n| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],addresses, domains, type, os, hw\r\n| where name !in(AssetsWithLogging)",
+        "version": 1
+      }
+    },
+    {
+      "type": "Microsoft.Insights/workbooks",
+      "apiVersion": "2021-08-01",
+      "name": "[guid('Rumble-Workbook', resourceGroup().id)]",
+      "location": "[parameters('location')]",
+      "kind": "shared",
+      "properties": {
+        "category": "sentinel",
+        "description": "Workbook to visualize Rumble assetinformation such as the distribution of asset types and operating systems, the most common TCP/UDP ports and protocols, and more.",
+        "displayName": "Rumble Network Discovery",
+        "serializedData": "{\r\n  \"version\": \"Notebook/1.0\",\r\n  \"items\": [\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| where type != ''\\r\\n| summarize count() by type\",\r\n        \"size\": 3,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen asset types\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"piechart\"\r\n      },\r\n      \"customWidth\": \"20\",\r\n      \"name\": \"assetTypes\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"20\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| where os != ''\\r\\n| summarize count() by os\",\r\n        \"size\": 3,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen operating systems\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"piechart\"\r\n      },\r\n      \"customWidth\": \"20\",\r\n      \"name\": \"operatingSystems\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"20\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| where hw != ''\\r\\n| summarize count() by hw\",\r\n        \"size\": 3,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen hardware\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"piechart\"\r\n      },\r\n      \"customWidth\": \"20\",\r\n      \"name\": \"hardware\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"20\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog=toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| where newest_mac_vendor != ''\\r\\n| summarize count() by newest_mac_vendor\",\r\n        \"size\": 3,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen MAC vendors\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"piechart\"\r\n      },\r\n      \"customWidth\": \"20\",\r\n      \"name\": \"macVendor\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"20\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| mv-expand service_products\\r\\n| summarize Count=count() by Products=tostring(service_products)\\r\\n| order by Count\\r\\n| take 7\",\r\n        \"size\": 3,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen service products\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"piechart\"\r\n      },\r\n      \"customWidth\": \"20\",\r\n      \"name\": \"products\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"20\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| mv-expand service_ports_tcp\\r\\n| project toint(service_ports_tcp)\\r\\n| summarize Count=count() by Ports=tostring(service_ports_tcp)\\r\\n| order by Count\\r\\n| take 7\",\r\n        \"size\": 0,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen TCP ports\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"barchart\"\r\n      },\r\n      \"customWidth\": \"33\",\r\n      \"name\": \"tcpPorts\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"33\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| mv-expand service_ports_udp\\r\\n| project toint(service_ports_udp)\\r\\n| summarize Count=count() by Ports=tostring(service_ports_udp)\\r\\n| order by Count\\r\\n| take 7\",\r\n        \"size\": 0,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen UDP ports\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"barchart\"\r\n      },\r\n      \"customWidth\": \"33\",\r\n      \"name\": \"udpPorts\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"33\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| mv-expand service_protocols\\r\\n| summarize Count=count() by Protocols=tostring(service_protocols)\\r\\n| order by Count\\r\\n| take 7\",\r\n        \"size\": 0,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Most seen protocols\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"visualization\": \"barchart\"\r\n      },\r\n      \"customWidth\": \"33\",\r\n      \"name\": \"protocols\",\r\n      \"styleSettings\": {\r\n        \"maxWidth\": \"33\"\r\n      }\r\n    },\r\n    {\r\n      \"type\": 3,\r\n      \"content\": {\r\n        \"version\": \"KqlItem/1.0\",\r\n        \"query\": \"let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\\r\\nRumbleAssets\\r\\n| where TimeGenerated >= LastLog\\r\\n| where os != ''\\r\\n| where alive = true\\r\\n| where scanned = true\\r\\n| project LastSeen=last_seen,Organization=org_name,Site=site_name,Name=names[0],Address=addresses[0],Type=type,OS=os,Hardware=hw,TCP=service_ports_tcp,UDP=service_ports_udp,Protocols=service_protocols\",\r\n        \"size\": 0,\r\n        \"showAnalytics\": true,\r\n        \"title\": \"Last seen assets\",\r\n        \"timeContext\": {\r\n          \"durationMs\": 86400000\r\n        },\r\n        \"queryType\": 0,\r\n        \"resourceType\": \"microsoft.operationalinsights/workspaces\",\r\n        \"gridSettings\": {\r\n          \"rowLimit\": 50,\r\n          \"filter\": true\r\n        }\r\n      },\r\n      \"name\": \"assets\"\r\n    }\r\n  ],\r\n  \"fallbackResourceIds\": [\r\n    \"/subscriptions/1a527a1d-228c-40e6-aafe-12ef15e1f4da/resourcegroups/sentinelhackathon2022-rg/providers/microsoft.operationalinsights/workspaces/sentinelhackathon2022\"\r\n  ],\r\n  \"fromTemplateId\": \"sentinel-UserWorkbook\",\r\n  \"$schema\": \"https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json\"\r\n}",
+        "sourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]",
+        "version": "Notebook/1.0"
+      }
+    },
+    {
+      "type": "Microsoft.SecurityInsights/watchlists",
+      "apiVersion": "2021-09-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('logAnalyticsWorkspaceName'))]",
+      "name": "Rumble-Watchlist",
+      "properties": {
+        "contentType": "text/csv",
+        "description": "High value assets from Rumble Network Discovery",
+        "displayName": "Rumble - High Value Assets",
+        "isDeleted": false,
+        "itemsSearchKey": "id",
+        "labels": [],
+        "numberOfLinesToSkip": 0,
+        "provider": "Custom",
+        "rawContent": "id,ip_address,hostname,description\r\n00000000-0000-0000-0000-000000000000,127.0.0.1,localhost,\"My local computer\"\r\n54c89e53-b826-4bfb-b9a3-50b42d43d19b,192.168.1.56,LINUX-MINT,\"Linux Mint terminal server\"",
+        "source": "Local file",
+        "watchlistId": "[guid('Rumble-Watchlist', resourceGroup().id)]"
+      }
+    },
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2021-09-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('logAnalyticsWorkspaceName'))]",
+      "name": "Rumble-ChangedAssetAlert",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "(Rumble) High value network asset changed",
+        "description": "Detects when a high value network asset monitored by Rumble Network Discovery has changed in some capacity at the network level (e.g. new IP address, exposed ports, etc).",
+        "severity": "High",
+        "enabled": true,
+        "query": "let highValueAssets = (_GetWatchlist('Rumble-Watchlist') | project id, ip_address, hostname);\r\nRumbleAlerts\r\n| where event_type == 'assets-changed'\r\n| extend name=names[0], address=addresses[0]\r\n| where (id in (highValueAssets)) or (address in (highValueAssets)) or (name in (highValueAssets))",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Reconnaissance",
+          "ResourceDevelopment",
+          "CommandAndControl",
+          "LateralMovement"
+        ],
+        "techniques": [
+          "T1590",
+          "T1584",
+          "T1571",
+          "T0885",
+          "T1021"
+        ],
+        "alertRuleTemplateName": null,
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT4H",
+            "matchingMethod": "AllEntities",
+            "groupByEntities": [],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "(Rumble) High value network asset changed: {{address}}",
+          "alertDescriptionFormat": "Rumble Network Discovery has detected that the host at {{address}} ({{name}}) has changed as of {{TimeGenerated}}.",
+          "alertTacticsColumnName": null,
+          "alertSeverityColumnName": null
+        },
+        "customDetails": {
+          "ID": "id"
+        },
+        "entityMappings": [
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "address"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "name"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2021-09-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('logAnalyticsWorkspaceName'))]",
+      "name": "Rumble-NewAssetAlert",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "(Rumble) New network assets discovered",
+        "description": "Detects when Rumble Network Discovery has found a new device connected to the network.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "RumbleAlerts\r\n| where event_type == 'new-assets-found'\r\n| extend name=names[0], address=addresses[0]",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Reconnaissance",
+          "ResourceDevelopment",
+          "CommandAndControl",
+          "LateralMovement"
+        ],
+        "techniques": [
+          "T1590",
+          "T1584",
+          "T1571",
+          "T0885",
+          "T1021"
+        ],
+        "alertRuleTemplateName": null,
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT4H",
+            "matchingMethod": "AnyAlert",
+            "groupByEntities": [],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "(Rumble) New network assets discovered",
+          "alertDescriptionFormat": "Rumble Network Discovery has detected new assets on the network as of {{TimeGenerated}}.",
+          "alertTacticsColumnName": null,
+          "alertSeverityColumnName": null
+        },
+        "customDetails": null,
+        "entityMappings": [
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "address"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "name"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
