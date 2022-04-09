@@ -5,7 +5,7 @@ The [Rumble Network Discovery](https://www.rumble.run/) solution for Microsoft S
 
 The Rumble Network Discovery solution consists of the following resources:
  * **Data Connector**:
-    * Azure Functions app, consisting of a unction with a timer trigger to fetch a daily export of asset information from the Rumble Organizations API (ingested into the *RumbleAssets_CL* table) and a function with a HTTP trigger to capture alerts for new and modified assets from the Rumble console (ingested into the *RumbleAlerts_CL* table).
+    * Azure Functions app, consisting of a unction with a timer trigger to fetch a daily export of asset information from the Rumble Organizations API (ingested into the RumbleAssets_CL table) and a function with a HTTP trigger to capture alerts for new and modified assets from the Rumble console (ingested into the RumbleAlerts_CL table).
     * Key vault, to securely store and retrieve secrets such as the Rumble Organization API key and Log Analytics workspace key.
     * Data connector within Microsoft Sentinel, to monitor the connectivity status of the connector.
  * **Parsers**: *RumbleAssets* and *RumbleAlerts* parsers, to filter and manipulate the raw data recieved from the Rumble API.
@@ -42,6 +42,7 @@ The Rumble Network Discovery solution consists of the following resources:
 3. Enter the **Rumble API key**, **Workspace name**, **Workspace ID** and **Workspace key**
 4. Click **Review + create**
 5. Wait for the deployment to finish successfully
+>**Note:** While the template will always work on the first deployment, you may get a HTTP 409 (conflict) error for both the parsers and hunting queries if you attempt to subsequently redeploy the template on the same Log Analytics workspace. This appears to be a bug with the 'Microsoft.OperationalInsights/workspaces/savedSearches' provider not being properly idempotent and is not an issue with the template itself; the solution will continue to work regardless of the error.
 
 ### 4. Copy your Azure Functions webhook URL
 1. Open your Azure Function app (e.g. Rumble-FunctionApp) in the Azure Portal
