@@ -4,12 +4,12 @@ The [Rumble Network Discovery](https://www.rumble.run/) solution for Microsoft S
 ![Workbook](Workbooks/workbook.png)
 
 The Rumble Network Discovery solution consists of the following resources:
- * **Data Connector** - An Azure Functions app consting of:
-    * Function with a timer trigger, to fetch a daily export of asset information from the Rumble Organizations API. Ingested into the *RumbleAssets_CL* table.
-    * Function with a HTTP trigger, to act as a webhook and capture to alerts regarding new and modified assets from the Rumble console. Ingested into the *RumbleAlerts_CL* table.
-    * 'Generic UI' data connector within Microsoft Sentinel, to monitor the connectivity status of the connector.
- * **Parsers** - *RumbleAssets* and *RumbleAlerts* parsers, to filter and manipulate the raw data recieved from the Rumble API.
- * **Workbook** - A workbook to monitor and query Rumble asset information, such as:
+ * **Data Connector**:
+    * Azure Functions app, consisting of a unction with a timer trigger to fetch a daily export of asset information from the Rumble Organizations API (ingested into the *RumbleAssets_CL* table) and a function with a HTTP trigger to capture alerts for new and modified assets from the Rumble console (ingested into the *RumbleAlerts_CL* table).
+    * Key vault, to securely store and retrieve secrets such as the Rumble Organization API key and Log Analytics workspace key.
+    * Data connector within Microsoft Sentinel, to monitor the connectivity status of the connector.
+ * **Parsers**: *RumbleAssets* and *RumbleAlerts* parsers, to filter and manipulate the raw data recieved from the Rumble API.
+ * **Workbook**: A workbook to monitor and query Rumble asset information, such as:
     * Most seen asset types, operating systems and hardware
     * Most seen TCP/UDP ports, protocols and products
     * An easily-searchable export of the Rumble asset information
