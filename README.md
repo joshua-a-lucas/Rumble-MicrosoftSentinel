@@ -58,6 +58,36 @@ The Rumble Network Discovery solution consists of the following resources:
     * **Name**: New Assets Template
     * **Template type**: JSON
     * **Body of message**: \<Contents of **Rumble-MicrosoftSentinel/Data Connectors/newAssetTemplate.txt**>
+    ```json
+    {
+    {{#rule.is_scan}}
+        {{#scan}}
+        "new": {{assets_new}},
+        "changed": {{assets_changed}},
+        {{/scan}}
+        "new_assets": [
+            {{#report.new}}
+            {
+                "addresses": "{{addresses}}",
+                "alive": "{{alive}}",
+                "created_at": "{{created_at}}",
+                "detected_by": "{{detected_by}}",
+                "domains": "{{domains}}",
+                "first_seen": "{{first_seen}}",
+                "hw": "{{hw}}",
+                "id": "{{id}}",
+                "last_seen": "{{last_seen}}",
+                "names": "{{names}}",
+                "os": "{{os}}",
+                "service_count": "{{service_count}}",
+                "type": "{{type}}",
+                "updated_at": "{{updated_at}}"
+            },
+            {{/report.new}}
+        ]
+    {{/rule.is_scan}}
+    }
+    ```
 3. Navigate to the Rumble [Alerts > Rules](https://console.rumble.run/alerts/rules) page, and [create a rule](https://www.rumble.run/docs/rules-engine/) for 'new asset' events as follows:
     * **Name**: New Assets Rule
     * **Event**: new-assets-found
