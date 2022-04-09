@@ -8,7 +8,7 @@ The Rumble Network Discovery solution consists of the following resources:
     * Azure Functions app, consisting of a unction with a timer trigger to fetch a daily export of asset information from the Rumble Organizations API (ingested into the RumbleAssets_CL table) and a function with a HTTP trigger to capture alerts for new and modified assets from the Rumble console (ingested into the RumbleAlerts_CL table).
     * Key vault, to securely store and retrieve secrets such as the Rumble Organization API key and Log Analytics workspace key.
     * Data connector within Microsoft Sentinel, to monitor the connectivity status of the connector.
- * **Parsers**: *RumbleAssets* and *RumbleAlerts* parsers, to filter and manipulate the raw data recieved from the Rumble API.
+ * **Parsers**: RumbleAssets and RumbleAlerts parsers, to filter and manipulate the raw data recieved from the Rumble API and rules engine.
  * **Workbook**: A workbook to monitor and query Rumble asset information, such as:
     * Most seen asset types, operating systems and hardware
     * Most seen TCP/UDP ports, protocols and products
@@ -20,6 +20,8 @@ The Rumble Network Discovery solution consists of the following resources:
  * **Analytic Rules**:
     * Alerts when new assets are discovered on the network
     * Alerts when a high value asset as been modified at the network level  (e.g. new IP addresses, exposed ports, etc).
+
+This solution was developed entirely using Bicep, so you can re-use the resource declarations and other components in [mainTemplate.bicep](mainTemplate.bicep) as a reference for your own Microsoft Sentinel solutions.
 
 ## Deployment
 >**Note:** The Rumble Network Discovery data connector uses [Azure Functions](https://azure.microsoft.com/pricing/details/functions/) to ingest asset information and alerts into Microsoft Sentinel, as well as [Key Vault](https://azure.microsoft.com/en-us/pricing/details/key-vault/) to securely store secrets, which may result in additional charges for your Azure subscription.
