@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.5.6.12127",
-      "templateHash": "6626668932903009574"
+      "templateHash": "3243798940001034664"
     }
   },
   "parameters": {
@@ -174,6 +174,7 @@
       "properties": {
         "AzureWebJobsStorage": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-08-01').keys[0].value)]",
         "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', variables('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-08-01').keys[0].value)]",
+        "WEBSITE_CONTENTSHARE": "[toLower(variables('functionAppName'))]",
         "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).InstrumentationKey]",
         "APPLICATIONINSIGHTS_CONNECTION_STRING": "[format('InstrumentationKey={0}', reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).InstrumentationKey)]",
         "FUNCTIONS_WORKER_RUNTIME": "powershell",
@@ -181,10 +182,13 @@
         "FUNCTIONS_EXTENSION_VERSION": "~3",
         "rumbleApiKey": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[0], split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[1])).secretUri)]",
         "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
-        "workspaceKey": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[0], split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[1])).secretUri)]"
+        "workspaceKey": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[0], split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[1])).secretUri)]",
+        "WEBSITE_RUN_FROM_PACKAGE": "https://rumbletest.blob.core.windows.net/public/Rumble-FunctionApp.zip"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[0], split(format('{0}/rumbleApiKey', variables('keyVaultName')), '/')[1])]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[0], split(format('{0}/workspaceKey', variables('keyVaultName')), '/')[1])]"
@@ -256,12 +260,8 @@
               "description": ">**Note:** The Rumble Network Discovery data connector uses [Azure Functions](https://azure.microsoft.com/pricing/details/functions/) to ingest asset information and alerts into Microsoft Sentinel, as well as [Key Vault](https://azure.microsoft.com/en-us/pricing/details/key-vault/) to securely store secrets, which may result in additional charges."
             },
             {
-              "title": "1. Create a Rumble Organization API key",
-              "description": "1. Log in to the [Rumble console](https://console.rumble.run/)\n2. Navigate to [Organizations](https://console.rumble.run/organizations) and select your organization\n3. Under API tokens, click Generate API Key and copy the token value"
-            },
-            {
-              "title": "2. Copy your Log Analytics workspace ID, key and name",
-              "description": "1. Copy your Log Analytics workspace ID and Key, as provided below\n2. Make note of your Microsoft Sentinel workspace name",
+              "title": "Deployment",
+              "description": "Refer to the Rumble Network Discovery solution for Microsoft Sentinel [GitHub repository](https://github.com/joshua-a-lucas/Rumble-MicrosoftSentinel) for deployment instructions. You will need your Log Analytics workspace name, ID and key, as well as an Organization API key for the Rumble API.",
               "instructions": [
                 {
                   "parameters": {
@@ -282,14 +282,6 @@
                   "type": "CopyableLabel"
                 }
               ]
-            },
-            {
-              "title": "3. Deploy the Azure Resource Manager (ARM) template",
-              "description": "1. Click the **Deploy to Azure** button below\n\n[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://google.com)\n2. Select your desired **Subscription**, **Resource Group** and **Location**\n3. Enter the **Rumble API key**, *Workspace name*, **Workspace ID** and **Workspace key**\n4. Click **Review + create**"
-            },
-            {
-              "title": "4. Create a Rumble alert template",
-              "description": "1. Instructions coming soon..."
             }
           ],
           "permissions": {
@@ -344,6 +336,30 @@
     {
       "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
       "apiVersion": "2020-08-01",
+      "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), variables('assetParserName'))]",
+      "properties": {
+        "category": "Rumble",
+        "displayName": "Rumble Assets Parser",
+        "functionAlias": "[variables('assetParserName')]",
+        "query": "// Usage Instruction : \r\n// Paste below query in Log Analytics, click on the Save button and select as Function from drop down by specifying function name and alias (e.g. RumbleAssets).\r\n// Functions usually take 10-15 minutes to activate. You can then use function alias from any other queries (e.g. RumbleAssets | take 10).\r\n// Reference :\r\n// Using functions in Azure monitor log queries : https://docs.microsoft.com/azure/azure-monitor/log-query/functions\r\n// Tech Community Blog on KQL Functions : https://techcommunity.microsoft.com/t5/Azure-Sentinel/Using-KQL-functions-to-speed-up-analysis-in-Azure-Sentinel/ba-p/712381\r\nlet RumbleAssets = RumbleAssets_CL\r\n| project\r\n    TimeGenerated,\r\n    addresses=parse_json(addresses_s),\r\n    addresses_extra=parse_json(addresses_extra_s),\r\n    agent_name=agent_name_s,\r\n    alive=alive_b,\r\n    created_at=unixtime_seconds_todatetime(created_at_d),\r\n    detected_by=detected_by_s,\r\n    domains=parse_json(domains_s),\r\n    first_seen=unixtime_seconds_todatetime(first_seen_d),\r\n    hw=hw_s,\r\n    hw_product=hw_product_s,\r\n    hw_vendor=hw_vendor_s,\r\n    hw_version=hw_version_s,\r\n    id=id_g,\r\n    last_seen=unixtime_seconds_todatetime(last_seen_d),\r\n    names=parse_json(names_s),\r\n    newest_mac=newest_mac_s,\r\n    newest_mac_age=unixtime_nanoseconds_todatetime(newest_mac_age_d),\r\n    newest_mac_vendor=newest_mac_vendor_s,\r\n    org_name=org_name_s,\r\n    os=os_s,\r\n    os_product=os_product_s,\r\n    os_vendor=os_vendor_s,\r\n    os_version=os_version_s,\r\n    scanned=scanned_b,\r\n    service_ports_tcp=parse_json(service_ports_tcp_s),\r\n    service_ports_udp=parse_json(service_ports_udp_s),\r\n    service_protocols=parse_json(service_protocols_s),\r\n    service_products=parse_json(service_products_s),\r\n    site_name=site_name_s,\r\n    sources=parse_json(sources_s),\r\n    type=type_s,\r\n    updated_at=unixtime_seconds_todatetime(updated_at_d),\r\n    comments=column_ifexists('comments_s', ''),\r\n    tags=column_ifexists('tags_s', ''),\r\n    tag_descriptions=column_ifexists('tag_descriptions_s', '')\r\n| project-reorder\r\n    TimeGenerated, \r\n    id,\r\n    created_at,\r\n    updated_at,\r\n    first_seen,\r\n    last_seen,\r\n    org_name,\r\n    site_name,\r\n    alive,\r\n    scanned,\r\n    agent_name,\r\n    sources,\r\n    detected_by,\r\n    names,\r\n    addresses,\r\n    addresses_extra,\r\n    domains,\r\n    type,\r\n    os_vendor,\r\n    os_product,\r\n    os_version,\r\n    os,\r\n    hw_vendor,\r\n    hw_product,\r\n    hw_version,\r\n    hw,\r\n    newest_mac,\r\n    newest_mac_vendor,\r\n    newest_mac_age,\r\n    service_ports_tcp,\r\n    service_ports_udp,\r\n    service_protocols,\r\n    service_products,\r\n    comments,\r\n    tags,\r\n    tag_descriptions\r\n;RumbleAssets\r\n| order by TimeGenerated",
+        "version": 1
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), variables('alertParserName'))]",
+      "properties": {
+        "category": "Rumble",
+        "displayName": "Rumble Alerts Parser",
+        "functionAlias": "[variables('alertParserName')]",
+        "query": "// Usage Instruction : \r\n// Paste below query in Log Analytics, click on the Save button and select as Function from drop down by specifying function name and alias (e.g. RumbleAlerts).\r\n// Functions usually take 10-15 minutes to activate. You can then use function alias from any other queries (e.g. RumbleAlerts | take 10).\r\n// Reference :\r\n// Using functions in Azure monitor log queries : https://docs.microsoft.com/azure/azure-monitor/log-query/functions\r\n// Tech Community Blog on KQL Functions : https://techcommunity.microsoft.com/t5/Azure-Sentinel/Using-KQL-functions-to-speed-up-analysis-in-Azure-Sentinel/ba-p/712381\r\nlet RumbleAlerts = RumbleAlerts_CL\r\n| project\r\n    TimeGenerated,\r\n    addresses=parse_json(addresses_s),\r\n    alive=tobool(alive_s),\r\n    created_at=todatetime(created_at_s),\r\n    detected_by=detected_by_s,\r\n    domains=parse_json(domains_s),\r\n    first_seen=todatetime(first_seen_s),\r\n    hw=hw_s,\r\n    id=id_g,\r\n    last_seen=todatetime(last_seen_s),\r\n    names=parse_json(names_s),\r\n    os=os_s,\r\n    service_count=toint(service_count_s),\r\n    type=type_s,\r\n    updated_at=todatetime(updated_at_s),\r\n    event_type=event_type_s\r\n| project-reorder\r\n    TimeGenerated,\r\n    event_type,\r\n    id,\r\n    created_at,\r\n    updated_at,\r\n    first_seen,\r\n    last_seen,\r\n    alive,\r\n    detected_by,\r\n    names,\r\n    addresses,\r\n    domains,\r\n    type,\r\n    os,\r\n    hw,\r\n    service_count\r\n;RumbleAlerts\r\n| order by TimeGenerated",
+        "version": 1
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
       "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), 'Rumble-ExposedWebInterfaces')]",
       "properties": {
         "category": "Rumble",
@@ -359,7 +375,7 @@
       "properties": {
         "category": "Rumble",
         "displayName": "(Rumble) Windows assets without security event logging",
-        "query": "// Get all Windows assets that have not sent security event logs to Microsoft Sentinel in the last day\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\n//let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];\r\nlet AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(1d) | distinct Computer | extend name=split(Computer, '.')[0]);\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where os contains 'Windows'\r\n| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],addresses, domains, type, os, hw\r\n| where name !in(AssetsWithLogging)",
+        "query": "// Get all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\n//let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];\r\nlet AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(7d) | distinct Computer | extend name=split(Computer, '.')[0]);\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where os contains 'Windows'\r\n| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],addresses, domains, type, os, hw\r\n| where name !in(AssetsWithLogging)",
         "version": 1
       }
     },
@@ -407,7 +423,7 @@
         "displayName": "(Rumble) High value network asset changed",
         "description": "Detects when a high value network asset monitored by Rumble Network Discovery has changed in some capacity at the network level (e.g. new IP address, exposed ports, etc).",
         "severity": "High",
-        "enabled": true,
+        "enabled": false,
         "query": "let highValueAssets = (_GetWatchlist('Rumble-Watchlist') | project id, ip_address, hostname);\r\nRumbleAlerts\r\n| where event_type == 'assets-changed'\r\n| extend name=names[0], address=addresses[0]\r\n| where (id in (highValueAssets)) or (address in (highValueAssets)) or (name in (highValueAssets))",
         "queryFrequency": "PT1H",
         "queryPeriod": "PT1H",
@@ -420,13 +436,6 @@
           "ResourceDevelopment",
           "CommandAndControl",
           "LateralMovement"
-        ],
-        "techniques": [
-          "T1590",
-          "T1584",
-          "T1571",
-          "T0885",
-          "T1021"
         ],
         "alertRuleTemplateName": null,
         "incidentConfiguration": {
@@ -485,7 +494,7 @@
         "displayName": "(Rumble) New network assets discovered",
         "description": "Detects when Rumble Network Discovery has found a new device connected to the network.",
         "severity": "Medium",
-        "enabled": true,
+        "enabled": false,
         "query": "RumbleAlerts\r\n| where event_type == 'new-assets-found'\r\n| extend name=names[0], address=addresses[0]",
         "queryFrequency": "PT1H",
         "queryPeriod": "PT1H",
@@ -498,13 +507,6 @@
           "ResourceDevelopment",
           "CommandAndControl",
           "LateralMovement"
-        ],
-        "techniques": [
-          "T1590",
-          "T1584",
-          "T1571",
-          "T0885",
-          "T1021"
         ],
         "alertRuleTemplateName": null,
         "incidentConfiguration": {

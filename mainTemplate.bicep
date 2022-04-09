@@ -129,7 +129,8 @@ resource functionAppAppsettings 'Microsoft.Web/sites/config@2018-11-01' = {
 	properties: {
 		AzureWebJobsStorage: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
 		WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
-		APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
+		WEBSITE_CONTENTSHARE: toLower(functionAppName)
+    APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
 		APPLICATIONINSIGHTS_CONNECTION_STRING: 'InstrumentationKey=${appInsights.properties.InstrumentationKey}'
 		FUNCTIONS_WORKER_RUNTIME: 'powershell'
 		FUNCTIONS_WORKER_RUNTIME_VERSION: '~7'
@@ -142,6 +143,10 @@ resource functionAppAppsettings 'Microsoft.Web/sites/config@2018-11-01' = {
 		WEBSITE_RUN_FROM_PACKAGE: 'https://rumbletest.blob.core.windows.net/public/Rumble-FunctionApp.zip'
     //WEBSITE_RUN_FROM_PACKAGE: 'https://github.com/joshua-a-lucas/Rumble-MicrosoftSentinel/tree/main/Data%20Connectors/Rumble-FunctionApp.zip'
 	}
+  dependsOn: [
+    keyVault
+    functionApp
+  ]
 }
 
 // Create a function
@@ -245,7 +250,7 @@ resource dataConnector 'Microsoft.SecurityInsights/dataConnectors@2021-09-01-pre
 				}
         {
           title: 'Deployment'
-          description: 'Refer to the Rumble Network Discovery solution for Microsoft Sentinel [GitHub repository]() for deployment instructions. You will need your Log Analytics workspace name, ID and key, as well as an Organization API key for the Rumble API.'
+          description: 'Refer to the Rumble Network Discovery solution for Microsoft Sentinel [GitHub repository](https://github.com/joshua-a-lucas/Rumble-MicrosoftSentinel) for deployment instructions. You will need your Log Analytics workspace name, ID and key, as well as an Organization API key for the Rumble API.'
           instructions: [
             {
               parameters: {
@@ -415,7 +420,7 @@ resource highValueAssetAlert 'Microsoft.SecurityInsights/alertRules@2021-09-01-p
     displayName: '(Rumble) High value network asset changed'
     description: 'Detects when a high value network asset monitored by Rumble Network Discovery has changed in some capacity at the network level (e.g. new IP address, exposed ports, etc).'
     severity: 'High'
-    enabled: true
+    enabled: false
     query: loadTextContent('Analytic Rules/HighValueAssetChanged.txt')
     queryFrequency: 'PT1H'
     queryPeriod: 'PT1H'
@@ -429,6 +434,7 @@ resource highValueAssetAlert 'Microsoft.SecurityInsights/alertRules@2021-09-01-p
       'CommandAndControl'
       'LateralMovement'
     ]
+    /*
     techniques: [
       'T1590'
       'T1584'
@@ -436,6 +442,7 @@ resource highValueAssetAlert 'Microsoft.SecurityInsights/alertRules@2021-09-01-p
       'T0885'
       'T1021'
     ]
+    */
     alertRuleTemplateName: null
     incidentConfiguration: {
       createIncident: true
@@ -493,7 +500,7 @@ resource newAssetAlert 'Microsoft.SecurityInsights/alertRules@2021-09-01-preview
     displayName: '(Rumble) New network assets discovered'
     description: 'Detects when Rumble Network Discovery has found a new device connected to the network.'
     severity: 'Medium'
-    enabled: true
+    enabled: false
     query: loadTextContent('Analytic Rules/NewAssetDiscovered.txt')
     queryFrequency: 'PT1H'
     queryPeriod: 'PT1H'
@@ -506,13 +513,6 @@ resource newAssetAlert 'Microsoft.SecurityInsights/alertRules@2021-09-01-preview
       'ResourceDevelopment'
       'CommandAndControl'
       'LateralMovement'
-    ]
-    techniques: [
-      'T1590'
-      'T1584'
-      'T1571'
-      'T0885'
-      'T1021'
     ]
     alertRuleTemplateName: null
     incidentConfiguration: {

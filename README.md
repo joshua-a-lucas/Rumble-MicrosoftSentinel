@@ -22,7 +22,7 @@ The Rumble Network Discovery solution consists of the following resources:
     * Alerts when a high value asset as been modified at the network level  (e.g. new IP addresses, exposed ports, etc).
 
 ## Deployment
->**Note:** The Rumble Network Discovery data connector uses [Azure Functions](https://azure.microsoft.com/pricing/details/functions/) to ingest asset information and alerts into Microsoft Sentinel, as well as [Key Vault](https://azure.microsoft.com/en-us/pricing/details/key-vault/) to securely store secrets, which may result in additional charges.
+>**Note:** The Rumble Network Discovery data connector uses [Azure Functions](https://azure.microsoft.com/pricing/details/functions/) to ingest asset information and alerts into Microsoft Sentinel, as well as [Key Vault](https://azure.microsoft.com/en-us/pricing/details/key-vault/) to securely store secrets, which may result in additional charges for your Azure subscription.
 ### 1. Create a Rumble Organization API key
 1. Log in to the [Rumble console](https://console.rumble.run/)
 2. Navigate to [Organizations](https://console.rumble.run/organizations) and select your organization
@@ -46,13 +46,13 @@ The Rumble Network Discovery solution consists of the following resources:
 ### 4. Copy your Azure Functions webhook URL
 1. Open your Azure Function app (e.g. Rumble-FunctionApp) in the Azure Portal
 2. Navigate to Functions > Get-RumbleAlerts > Overview, click 'Get Function Url' and copy the URL. This is the webhook URL you will need to create a Rumble alert channel in Step 5.
-3. (Optional) By default, the Azure Functions data connector will send an export of Rumble assets to Microsoft Sentinel daily at 12 PM UTC. If you wish to manually trigger an initial export to verify the connector is working as expected, navigate to Functions > Get-RumbleAssets > Code + Test, click 'Test/Run' > Run. You should see data populate in the RumbleAssets_CL table in Microsoft Sentinel within the next few minutes.
+3. (Optional) By default, the Azure Functions data connector is configured to send an export of Rumble assets to Microsoft Sentinel daily at 12 PM UTC. If you wish to manually trigger an initial export to verify the connector is working as expected, navigate to Functions > Get-RumbleAssets > Code + Test, click 'Test/Run' > Run. You should see data populate in the RumbleAssets_CL table in Microsoft Sentinel within the next 15-20 minutes.
 
 ### 5. Create Rumble alert channels, templates & rules
 1. Navigate to the [Rumble Alerts > Channels](https://console.rumble.run/alerts/channels) page, and create a new webhook channel as follows:
     * **Name**: Microsoft Sentinel
     * **Channel type**: Webhook
-    * **Webhook URL**: \<Copied from Step 4>
+    * **Webhook URL**: \<Copied from Step 5>
 2. Navigate to the [Rumble Alerts > Templates](https://console.rumble.run/alerts/templates) page, and create a JSON [alert template](https://www.rumble.run/docs/creating-alert-templates/) for 'new asset' events as follows:
     * **Name**: New Assets Template
     * **Template type**: JSON
@@ -71,3 +71,10 @@ The Rumble Network Discovery solution consists of the following resources:
 
 ### 6. (Optional) Create a scheduled Rumble scan task
 1. Rumble will only send alerts regarding new or modified assets following a completed scan task. To automate this process, create a scheduled scan task that runs hourly by navigating to the Rumble [Tasks > Overview](https://console.rumble.run/tasks) page, and create a new [scheduled scan](https://www.rumble.run/docs/managing-tasks/) that runs hourly.
+
+### 7. Verify connectivity and enable scheduled analytic rules
+1. Verify data is populating in the RumbleAssets_CL and RumbleAlerts_CL tables and that the RumbleAssets and RumbleAlerts parsers are working as expected.
+> **Note**: It may take 15-20 minutes for data to be available in Log Analytics after enabling the data connector and triggering a function for the first time
+2. Navigate to the Analytics page in Microsoft Sentinel and enable the following rules:
+    * (Rumble) High value network asset changed
+    * (Rumble) New network assets discovered
