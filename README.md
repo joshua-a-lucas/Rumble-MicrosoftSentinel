@@ -36,7 +36,7 @@ The Rumble Network Discovery solution consists of the following resources:
 ### 3. Deploy the Azure Resource Manager (ARM) template
 1. Click the **Deploy to Azure** button below
 
-[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https%3A%2F%2Fraw.githubusercontent.com%2Fjoshua-a-lucas%2FRumble-MicrosoftSentinel%2Fmain%2FmainTemplate.json)
+[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjoshua-a-lucas%2FRumble-MicrosoftSentinel%2Fmain%2FmainTemplate.json)
 
 2. Select your desired **Subscription**, **Resource Group** and **Location**
 3. Enter the **Rumble API key**, **Workspace name**, **Workspace ID** and **Workspace key**

@@ -140,8 +140,7 @@ resource functionAppAppsettings 'Microsoft.Web/sites/config@2018-11-01' = {
 		workspaceId: logAnalyticsWorkspaceID
 		workspaceKey: '@Microsoft.KeyVault(SecretUri=${workspaceKeySecret.properties.secretUri})'
 		// Deploy the Azure Function app from a .zip package
-		WEBSITE_RUN_FROM_PACKAGE: 'https://rumbletest.blob.core.windows.net/public/Rumble-FunctionApp.zip'
-    //WEBSITE_RUN_FROM_PACKAGE: 'https://github.com/joshua-a-lucas/Rumble-MicrosoftSentinel/tree/main/Data%20Connectors/Rumble-FunctionApp.zip'
+    WEBSITE_RUN_FROM_PACKAGE: 'https://github.com/joshua-a-lucas/Rumble-MicrosoftSentinel/raw/main/Data%20Connectors/Rumble-FunctionApp.zip'
 	}
   dependsOn: [
     keyVault
