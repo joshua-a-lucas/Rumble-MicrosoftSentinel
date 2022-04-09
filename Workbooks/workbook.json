@@ -190,9 +190,6 @@
       "name": "assets"
     }
   ],
-  "fallbackResourceIds": [
-    "/subscriptions/1a527a1d-228c-40e6-aafe-12ef15e1f4da/resourcegroups/sentinelhackathon2022-rg/providers/microsoft.operationalinsights/workspaces/sentinelhackathon2022"
-  ],
   "fromTemplateId": "sentinel-UserWorkbook",
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
