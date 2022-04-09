@@ -58,7 +58,7 @@ The Rumble Network Discovery solution consists of the following resources:
     * **Name**: New Assets Template
     * **Template type**: JSON
     * **Body of message**: \<Contents of **Rumble-MicrosoftSentinel/Data Connectors/newAssetTemplate.txt**>
-    ```json
+    ```
     {
     {{#rule.is_scan}}
         {{#scan}}
