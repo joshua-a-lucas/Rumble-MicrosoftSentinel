@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.5.6.12127",
-      "templateHash": "13876732418967370813"
+      "templateHash": "7617209704436686648"
     }
   },
   "parameters": {
@@ -21,7 +21,7 @@
       "defaultValue": "Rumble",
       "maxLength": 11,
       "metadata": {
-        "description": "Name of the Azure Functions app used to ingest asset information and alerts from the Rumble API. Will be used to generate the name of associated resources (e.g. Rumble-KeyVault)."
+        "description": "Name of the Azure Functions app used to ingest asset information and alerts from the Rumble API. Will be used to generate unique names for associated resources."
       }
     },
     "rumbleAPIKey": {
@@ -53,8 +53,8 @@
     "storageAccountName": "[format('{0}{1}', toLower(parameters('appName')), uniqueString(resourceGroup().id))]",
     "appServicePlanName": "[format('{0}-{1}', parameters('appName'), uniqueString(resourceGroup().id))]",
     "appInsightsName": "[format('{0}-{1}', parameters('appName'), uniqueString(resourceGroup().id))]",
-    "functionAppName": "[format('{0}-FunctionApp', parameters('appName'))]",
-    "keyVaultName": "[format('{0}-KeyVault', parameters('appName'))]",
+    "functionAppName": "[format('{0}-{1}', parameters('appName'), uniqueString(resourceGroup().id))]",
+    "keyVaultName": "[format('{0}-{1}', parameters('appName'), uniqueString(resourceGroup().id))]",
     "assetTableName": "RumbleAssets_CL",
     "alertTableName": "RumbleAlerts_CL",
     "assetParserName": "RumbleAssets",
@@ -368,15 +368,19 @@
         "category": "Hunting Queries",
         "displayName": "(Rumble) Assets with exposed web interfaces",
         "query": "// Lists all assets with exposed web interfaces using HTTP/S\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where service_protocols has 'http'\r\n| project id, first_seen, last_seen, org_name, site_name, name=names[0], address=addresses[0], os, hw, newest_mac_vendor, service_ports_tcp, service_ports_udp, service_protocols, service_products",
-        "version": 1,
+        "version": 2,
         "tags": [
           {
-            "name": "Description",
-            "value": "Lists all assets with exposed web interfaces using HTTP/HTTPS."
+            "name": "description",
+            "value": "Lists all assets with exposed web interfaces using HTTP/S."
           },
           {
-            "name": "Tactics",
-            "value": "CommandAndControl"
+            "name": "tactics",
+            "value": "CommandAndControl,LateralMovement"
+          },
+          {
+            "name": "techniques",
+            "value": "T1571,T0885,T1021"
           }
         ]
       }
@@ -389,16 +393,20 @@
         "etag": "*",
         "category": "Hunting Queries",
         "displayName": "(Rumble) Windows assets without security event logging",
-        "query": "// Get all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\n//let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];\r\nlet AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(7d) | distinct Computer | extend name=split(Computer, '.')[0]);\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where os contains 'Windows'\r\n| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],addresses, domains, type, os, hw\r\n| where name !in(AssetsWithLogging)",
-        "version": 1,
+        "query": "// List all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week\r\nlet Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));\r\n//let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];\r\nlet AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(7d) | distinct Computer | extend name=split(Computer, '.')[0]);\r\nRumbleAssets\r\n| where TimeGenerated >= Time\r\n| where os contains 'Windows'\r\n| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],address=addresses[0], domains, type, os, hw\r\n| where name !in(AssetsWithLogging)",
+        "version": 2,
         "tags": [
           {
-            "name": "Description",
-            "value": "Lists all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week"
+            "name": "description",
+            "value": "Lists all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week."
           },
           {
-            "name": "Tactics",
-            "value": "Impact"
+            "name": "tactics",
+            "value": "InhibitResponseFunction"
+          },
+          {
+            "name": "techniques",
+            "value": "T0804"
           }
         ]
       }

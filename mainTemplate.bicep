@@ -23,8 +23,8 @@ param logAnalyticsWorkspaceKey string
 var storageAccountName = '${toLower(appName)}${uniqueString(resourceGroup().id)}' 
 var appServicePlanName = '${appName}-${uniqueString(resourceGroup().id)}'
 var appInsightsName = '${appName}-${uniqueString(resourceGroup().id)}'
-var functionAppName = '${appName}-FunctionApp'
-var keyVaultName = '${appName}-KeyVault'
+var functionAppName = '${appName}-${uniqueString(resourceGroup().id)}'
+var keyVaultName = '${appName}-${uniqueString(resourceGroup().id)}'
 
 // Create the storage account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
