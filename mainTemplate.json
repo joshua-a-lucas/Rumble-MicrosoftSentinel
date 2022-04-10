@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.5.6.12127",
-      "templateHash": "7617209704436686648"
+      "templateHash": "3428393860161968225"
     }
   },
   "parameters": {
@@ -373,6 +373,58 @@
           {
             "name": "description",
             "value": "Lists all assets with exposed web interfaces using HTTP/S."
+          },
+          {
+            "name": "tactics",
+            "value": "CommandAndControl,LateralMovement"
+          },
+          {
+            "name": "techniques",
+            "value": "T1571,T0885,T1021"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), 'Rumble-SummarizeAssetsByTCP')]",
+      "properties": {
+        "etag": "*",
+        "category": "Hunting Queries",
+        "displayName": "(Rumble) Summarize assets by exposed TCP port",
+        "query": "// Summarize assets by exposed TCP port\r\nlet LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| extend name=tostring(names[0]), address=tostring(addresses[0])\r\n| mv-expand tcp_port=service_ports_tcp\r\n| project name, address, tcp_port=toint(tcp_port)\r\n| summarize \r\n    hostnames=make_set(name),\r\n    addresses=make_set(address)\r\n    by tcp_port\r\n| extend count=array_length(addresses)\r\n| order by tcp_port asc",
+        "version": 2,
+        "tags": [
+          {
+            "name": "description",
+            "value": "Lists a summary of all assets by exposed TCP port. Used to assist with identifying uncommon remote services."
+          },
+          {
+            "name": "tactics",
+            "value": "CommandAndControl,LateralMovement"
+          },
+          {
+            "name": "techniques",
+            "value": "T1571,T0885,T1021"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2020-08-01",
+      "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), 'Rumble-SummarizeAssetsByUDP')]",
+      "properties": {
+        "etag": "*",
+        "category": "Hunting Queries",
+        "displayName": "(Rumble) Summarize assets by exposed UDP port",
+        "query": "// Summarize assets by exposed UDP port\r\nlet LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));\r\nRumbleAssets\r\n| where TimeGenerated >= LastLog\r\n| extend name=tostring(names[0]), address=tostring(addresses[0])\r\n| mv-expand udp_port=service_ports_udp\r\n| project name, address, udp_port=toint(udp_port)\r\n| summarize \r\n    hostnames=make_set(name),\r\n    addresses=make_set(address)\r\n    by udp_port\r\n| extend count=array_length(addresses)\r\n| order by udp_port asc",
+        "version": 2,
+        "tags": [
+          {
+            "name": "description",
+            "value": "Lists a summary of all assets by exposed UDP port. Used to assist with identifying uncommon remote services."
           },
           {
             "name": "tactics",
