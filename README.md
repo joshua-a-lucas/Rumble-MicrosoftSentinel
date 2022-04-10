@@ -16,6 +16,7 @@ The Rumble Network Discovery solution consists of the following resources:
  * **Hunting Queries**:
     * List all assets with exposed web interfaces using HTTP/S
     * List all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week
+    * Summarize all assets by exposed TCP/UDP ports
  * **Watchlist**: A customizable watchlist, containing a list of high value assets that should be monitored for unauthorized changes.
  * **Analytic Rules**:
     * Alerts when new assets are discovered on the network
@@ -46,9 +47,9 @@ This solution was developed entirely using Bicep, so you can re-use the resource
 5. Wait for the deployment to finish successfully
 
 ### 4. Copy your Azure Functions webhook URL
-1. Open your Azure Function app (e.g. Rumble-FunctionApp) in the Azure Portal
+1. Open your Azure Function app in the Azure Portal
 2. Navigate to Functions > Get-RumbleAlerts > Overview, click 'Get Function Url' and copy the URL. This is the webhook URL you will need to create a Rumble alert channel in Step 5.
-3. (Optional) By default, the Azure Functions data connector is configured to send an export of Rumble assets to Microsoft Sentinel daily at 12 PM UTC. If you wish to manually trigger an initial export to verify the connector is working as expected, navigate to Functions > Get-RumbleAssets > Code + Test, click 'Test/Run' > Run. You should see data populate in the RumbleAssets_CL table in Microsoft Sentinel within the next 15-20 minutes.
+3. (Optional) By default, the Azure Functions data connector is configured to send an export of Rumble assets to Microsoft Sentinel daily at 12 PM UTC. If you wish to manually trigger an initial export to verify the connector is working as expected, navigate to Functions > Get-RumbleAssets > Code + Test and click 'Test/Run' > Run. You should see data populate in the RumbleAssets_CL table in Microsoft Sentinel within the next 15-20 minutes.
 
 ### 5. Create Rumble alert channels, templates & rules
 1. Navigate to the [Rumble Alerts > Channels](https://console.rumble.run/alerts/channels) page, and create a new webhook channel as follows:

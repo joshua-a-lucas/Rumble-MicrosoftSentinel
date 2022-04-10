@@ -381,6 +381,60 @@ resource exposedWebInterfacesQuery 'Microsoft.OperationalInsights/workspaces/sav
   }
 }
 
+// Create the 'summary of exposed TCP ports' query
+resource exposedTcpQuery 'Microsoft.OperationalInsights/workspaces/savedSearches@2020-08-01' = {
+  name: 'Rumble-SummarizeAssetsByTCP'
+  parent: workspace
+  properties: {
+    etag: '*'
+    category: 'Hunting Queries'
+    displayName: '(Rumble) Summarize assets by exposed TCP port'
+    query: loadTextContent('Hunting Queries/SummarizeAssetsByTCP.txt')
+    version: 2
+    tags: [
+      {
+        name: 'description'
+        value: 'Lists a summary of all assets by exposed TCP port. Used to assist with identifying uncommon remote services.'
+      }
+      {
+        name: 'tactics'
+        value: 'CommandAndControl,LateralMovement'
+      }
+      {
+        name: 'techniques'
+        value: 'T1571,T0885,T1021'
+      }
+    ]
+  }
+}
+
+// Create the 'summary of exposed UDP ports' query
+resource exposedUdpQuery 'Microsoft.OperationalInsights/workspaces/savedSearches@2020-08-01' = {
+  name: 'Rumble-SummarizeAssetsByUDP'
+  parent: workspace
+  properties: {
+    etag: '*'
+    category: 'Hunting Queries'
+    displayName: '(Rumble) Summarize assets by exposed UDP port'
+    query: loadTextContent('Hunting Queries/SummarizeAssetsByUDP.txt')
+    version: 2
+    tags: [
+      {
+        name: 'description'
+        value: 'Lists a summary of all assets by exposed UDP port. Used to assist with identifying uncommon remote services.'
+      }
+      {
+        name: 'tactics'
+        value: 'CommandAndControl,LateralMovement'
+      }
+      {
+        name: 'techniques'
+        value: 'T1571,T0885,T1021'
+      }
+    ]
+  }
+}
+
 // Create the 'Windows assets without logging' query
 resource windowsLoggingQuery 'Microsoft.OperationalInsights/workspaces/savedSearches@2020-08-01' = {
   name: 'Rumble-WindowsAssetsWithoutLogging'
