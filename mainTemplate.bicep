@@ -331,6 +331,7 @@ resource assetParser 'Microsoft.OperationalInsights/workspaces/savedSearches@202
   name: assetParserName
   parent: workspace
   properties: {
+    etag: '*' // Required to prevent HTTP 409 (conflict) errors when redeploying parser
     category: 'Rumble'
     displayName: 'Rumble Assets Parser'
     functionAlias: assetParserName
@@ -344,6 +345,7 @@ resource alertParser 'Microsoft.OperationalInsights/workspaces/savedSearches@202
   name: alertParserName
   parent: workspace
   properties: {
+    etag: '*' // Required to prevent HTTP 409 (conflict) errors when redeploying parser
     category: 'Rumble'
     displayName: 'Rumble Alerts Parser'
     functionAlias: alertParserName
@@ -352,6 +354,7 @@ resource alertParser 'Microsoft.OperationalInsights/workspaces/savedSearches@202
   }
 }
 
+/*
 // Create the 'exposed web interfaces' query
 resource exposedWebInterfacesQuery 'Microsoft.OperationalInsights/workspaces/savedSearches@2020-08-01' = {
   name: 'Rumble-ExposedWebInterfaces'
@@ -375,6 +378,7 @@ resource windowsLoggingQuery 'Microsoft.OperationalInsights/workspaces/savedSear
     version: 1
   }
 }
+*/
 
 // Create the workbook
 resource workbook 'Microsoft.Insights/workbooks@2021-08-01' = {

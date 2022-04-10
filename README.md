@@ -44,7 +44,6 @@ This solution was developed entirely using Bicep, so you can re-use the resource
 3. Enter the **Rumble API key**, **Workspace name**, **Workspace ID** and **Workspace key**
 4. Click **Review + create**
 5. Wait for the deployment to finish successfully
->**Note:** While the template will always work on the first deployment, you may get a HTTP 409 (conflict) error for both the parsers and hunting queries if you attempt to subsequently redeploy the template on the same Log Analytics workspace. This appears to be a bug with the 'Microsoft.OperationalInsights/workspaces/savedSearches' provider not being properly idempotent and is not an issue with the template itself; the solution will continue to work regardless of the error.
 
 ### 4. Copy your Azure Functions webhook URL
 1. Open your Azure Function app (e.g. Rumble-FunctionApp) in the Azure Portal
