@@ -1,9 +1,9 @@
-// Get all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week
+// List all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week
 let Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));
 //let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];
 let AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(7d) | distinct Computer | extend name=split(Computer, '.')[0]);
 RumbleAssets
 | where TimeGenerated >= Time
 | where os contains 'Windows'
-| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],addresses, domains, type, os, hw
+| project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],address=addresses[0], domains, type, os, hw
 | where name !in(AssetsWithLogging)

@@ -1,7 +1,7 @@
 @description('Location to depoloy all resources. Leave this value as-is to inherit the location from the parent resource group.')
 param location string = resourceGroup().location
 
-@description('Name of the Azure Functions app used to ingest asset information and alerts from the Rumble API. Will be used to generate the name of associated resources (e.g. Rumble-KeyVault).')
+@description('Name of the Azure Functions app used to ingest asset information and alerts from the Rumble API. Will be used to generate unique names for associated resources.')
 @maxLength(11)
 param appName string = 'Rumble'
 
@@ -37,20 +37,20 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
 	properties: {
 	  supportsHttpsTrafficOnly: true
 	  encryption: {
-		services: {
-			file: {
-				keyType: 'Account'
-				enabled: true
-			}
-			blob: {
-				keyType: 'Account'
-				enabled: true
-			}
-		}
+      services: {
+        file: {
+          keyType: 'Account'
+          enabled: true
+        }
+        blob: {
+          keyType: 'Account'
+          enabled: true
+        }
+      }
 		keySource: 'Microsoft.Storage'
 	  }
 	  accessTier: 'Hot'
-	}
+	  }
   }
 
 // Create the application insights instance
@@ -331,7 +331,7 @@ resource assetParser 'Microsoft.OperationalInsights/workspaces/savedSearches@202
   name: assetParserName
   parent: workspace
   properties: {
-    etag: '*' // Required to prevent HTTP 409 (conflict) errors when redeploying parser
+    etag: '*' // Required to prevent HTTP 409 (conflict) errors when redeploying template
     category: 'Rumble'
     displayName: 'Rumble Assets Parser'
     functionAlias: assetParserName
@@ -345,7 +345,7 @@ resource alertParser 'Microsoft.OperationalInsights/workspaces/savedSearches@202
   name: alertParserName
   parent: workspace
   properties: {
-    etag: '*' // Required to prevent HTTP 409 (conflict) errors when redeploying parser
+    etag: '*'
     category: 'Rumble'
     displayName: 'Rumble Alerts Parser'
     functionAlias: alertParserName
@@ -354,16 +354,30 @@ resource alertParser 'Microsoft.OperationalInsights/workspaces/savedSearches@202
   }
 }
 
-/*
 // Create the 'exposed web interfaces' query
 resource exposedWebInterfacesQuery 'Microsoft.OperationalInsights/workspaces/savedSearches@2020-08-01' = {
   name: 'Rumble-ExposedWebInterfaces'
   parent: workspace
   properties: {
-    category: 'Rumble'
+    etag: '*'
+    category: 'Hunting Queries'
     displayName: '(Rumble) Assets with exposed web interfaces'
     query: loadTextContent('Hunting Queries/ExposedWebInterfaces.txt')
-    version: 1
+    version: 2
+    tags: [
+      {
+        name: 'description'
+        value: 'Lists all assets with exposed web interfaces using HTTP/S.'
+      }
+      {
+        name: 'tactics'
+        value: 'CommandAndControl,LateralMovement'
+      }
+      {
+        name: 'techniques'
+        value: 'T1571,T0885,T1021'
+      }
+    ]
   }
 }
 
@@ -372,13 +386,27 @@ resource windowsLoggingQuery 'Microsoft.OperationalInsights/workspaces/savedSear
   name: 'Rumble-WindowsAssetsWithoutLogging'
   parent: workspace
   properties: {
-    category: 'Rumble'
+    etag: '*'
+    category: 'Hunting Queries'
     displayName: '(Rumble) Windows assets without security event logging'
     query: loadTextContent('Hunting Queries/WindowsAssetsWithoutLogging.txt')
-    version: 1
+    version: 2
+    tags: [
+      {
+        name: 'description'
+        value: 'Lists all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week.'
+      }
+      {
+        name: 'tactics'
+        value: 'InhibitResponseFunction'
+      }
+      {
+        name: 'techniques'
+        value: 'T0804'
+      }
+    ]
   }
 }
-*/
 
 // Create the workbook
 resource workbook 'Microsoft.Insights/workbooks@2021-08-01' = {

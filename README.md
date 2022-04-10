@@ -54,7 +54,7 @@ This solution was developed entirely using Bicep, so you can re-use the resource
 1. Navigate to the [Rumble Alerts > Channels](https://console.rumble.run/alerts/channels) page, and create a new webhook channel as follows:
     * **Name**: Microsoft Sentinel
     * **Channel type**: Webhook
-    * **Webhook URL**: \<Copied from Step 5>
+    * **Webhook URL**: \<Copied from Step 4>
 2. Navigate to the [Rumble Alerts > Templates](https://console.rumble.run/alerts/templates) page, and create a JSON [alert template](https://www.rumble.run/docs/creating-alert-templates/) for 'new asset' events as follows:
     * **Name**: New Assets Template
     * **Template type**: JSON
