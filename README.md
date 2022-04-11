@@ -1,28 +1,30 @@
 # Rumble Network Discovery solution for Microsoft Sentinel
-The [Rumble Network Discovery](https://www.rumble.run/) solution for Microsoft Sentinel enables organizations to enrich their Microsoft Sentinel queries with a daily export of Rumble asset information, as well as recieve alerts regarding new or modified high value assets. 
+The [Rumble Network Discovery](https://www.rumble.run/) solution for Microsoft Sentinel is a network domain solution that enables organizations to enrich their hunting queries with a daily export of asset information, as well as receive alerts when new assets are discovered on the network or high value assets are modified.
 
 ![Workbook](Workbooks/workbook.png)
 
 The Rumble Network Discovery solution consists of the following resources:
- * **Data Connector**:
-    * Azure Functions app, consisting of a unction with a timer trigger to fetch a daily export of asset information from the Rumble Organizations API (ingested into the RumbleAssets_CL table) and a function with a HTTP trigger to capture alerts for new and modified assets from the Rumble console (ingested into the RumbleAlerts_CL table).
-    * Key vault, to securely store and retrieve secrets such as the Rumble Organization API key and Log Analytics workspace key.
-    * Data connector within Microsoft Sentinel, to monitor the connectivity status of the connector.
- * **Parsers**: RumbleAssets and RumbleAlerts parsers, to filter and manipulate the raw data recieved from the Rumble API and rules engine.
- * **Workbook**: A workbook to monitor and query Rumble asset information, such as:
+ * **Data Connector**, to ingest data into Microsoft Sentinel using the Log Analytics Data Collector API:
+    * An Azure Functions app using the PowerShell 7.0 runtime, including:
+        * A function with a timer trigger to fetch a daily export of asset information from the Rumble Organizations API (ingested into the *RumbleAssets_CL* table)
+        * A function with a HTTP trigger to capture alerts for new and modified assets from the Rumble console (ingested into the *RumbleAlerts_CL* table).
+    * A Key Vault, to securely store and retrieve secrets such as the Rumble Organization API key and Log Analytics workspace key. The Azure Functions app uses a system assigned managed identity to retrieve secrets using [role-based access control](https://docs.microsoft.com/en-us/azure/key-vault/general/rbac-guide) rather than access policies.
+    * A Microsoft Sentinel data connector GUI, to monitor the connectivity status of the solution.
+ * **Parsers**, to filter and manipulate the raw data recieved from the Rumble API and rules engine (named *RumbleAssets* and *RumbleAlerts* respectively).
+ * **Workbook**, to monitor and provide insights into the Rumble asset information, such as:
     * Most seen asset types, operating systems and hardware
     * Most seen TCP/UDP ports, protocols and products
     * An easily-searchable export of the Rumble asset information
- * **Hunting Queries**:
+ * **Hunting Queries**, to investigate the environment:
     * List all assets with exposed web interfaces using HTTP/S
     * List all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week
     * Summarize all assets by exposed TCP/UDP ports
- * **Watchlist**: A customizable watchlist, containing a list of high value assets that should be monitored for unauthorized changes.
- * **Analytic Rules**:
-    * Alerts when new assets are discovered on the network
-    * Alerts when a high value asset as been modified at the network level  (e.g. new IP addresses, exposed ports, etc).
+ * **Watchlist**, containing a list of high value assets that should be monitored for unauthorized network changes.
+ * **Analytic Rules**, to alert security analysts when:
+    * New assets are discovered on the network
+    * High value assets have been modified at the network level (e.g. newly exposed services) using the aforementioned watchlist.
 
-This solution was developed entirely using Bicep, so you can re-use the resource declarations and other components in [mainTemplate.bicep](mainTemplate.bicep) as a reference for your own Microsoft Sentinel solutions.
+The deployment template for this solution was developed entirely Bicep, so you can re-use the resource declarations and other components in [mainTemplate.bicep](mainTemplate.bicep) as a reference for your own Microsoft Sentinel solutions.
 
 ## Deployment
 >**Note:** The Rumble Network Discovery data connector uses [Azure Functions](https://azure.microsoft.com/pricing/details/functions/) to ingest asset information and alerts into Microsoft Sentinel, as well as [Key Vault](https://azure.microsoft.com/en-us/pricing/details/key-vault/) to securely store secrets, which may result in additional charges for your Azure subscription.
