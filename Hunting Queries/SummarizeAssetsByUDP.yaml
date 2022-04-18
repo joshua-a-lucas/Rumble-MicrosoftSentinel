@@ -1,0 +1,28 @@
+id: a4036046-2f87-465f-b394-58944a39a620
+name: (Rumble) Summarize assets by exposed UDP port
+description: 'Lists a summary of all assets by exposed UDP port. Used to assist with identifying uncommon remote services.'
+requiredDataConnectors:
+  - connectorId: RumbleNetworkDiscovery
+    dataTypes:
+      - RumbleAssets_CL
+tactics:
+  - CommandAndControl
+  - LateralMovement
+relevantTechniques:
+  - T1571
+  - T0885
+  - T1021
+query: |
+  // Summarize assets by exposed UDP port
+  let LastLog = toscalar(RumbleAssets | summarize max(TimeGenerated));
+  RumbleAssets
+  | where TimeGenerated >= LastLog
+  | extend name=tostring(names[0]), address=tostring(addresses[0])
+  | mv-expand udp_port=service_ports_udp
+  | project name, address, udp_port=toint(udp_port)
+  | summarize 
+      hostnames=make_set(name),
+      addresses=make_set(address)
+      by udp_port
+  | extend count=array_length(addresses)
+  | order by udp_port asc

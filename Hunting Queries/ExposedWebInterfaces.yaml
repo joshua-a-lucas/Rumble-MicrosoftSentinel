@@ -1,0 +1,30 @@
+id: e481f7ea-95fe-4ddf-9752-19226481c869
+name: (Rumble) Assets with exposed web interfaces
+description: 'Lists all assets with exposed web interfaces using HTTP/S.'
+requiredDataConnectors:
+  - connectorId: RumbleNetworkDiscovery
+    dataTypes:
+      - RumbleAssets_CL
+tactics:
+  - CommandAndControl
+  - LateralMovement
+relevantTechniques:
+  - T1571
+  - T0885
+  - T1021
+query: |
+  // Lists all assets with exposed web interfaces using HTTP/S
+  let Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));
+  RumbleAssets
+  | where TimeGenerated >= Time
+  | where service_protocols has 'http'
+  | project id, first_seen, last_seen, org_name, site_name, name=names[0], address=addresses[0], os, hw, newest_mac_vendor, service_ports_tcp, service_ports_udp, service_protocols, service_products
+entityMappings:
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: address
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: name

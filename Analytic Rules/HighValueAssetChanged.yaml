@@ -1,0 +1,49 @@
+id: 4e9d717c-fdfc-4898-92d3-30d7a8858e60
+name: (Rumble) High value network asset changed
+kind: Scheduled
+description: |
+  'Detects when a high value network asset monitored by Rumble Network Discovery has changed in some capacity at the network level (e.g. new IP address, exposed ports, etc).'
+severity: High
+requiredDataConnectors:
+  - connectorId: RumbleNetworkDiscovery
+    dataTypes:
+      - RumbleAlerts_CL
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Reconnaissance
+  - ResourceDevelopment
+  - CommandAndControl
+  - LateralMovement
+relevantTechniques:
+  - T1590
+  - T1584
+  - T1571
+  - T1021
+query: |
+  let highValueAssets = (_GetWatchlist('Rumble-Watchlist') | project id, ip_address, hostname);
+  RumbleAlerts
+  | where event_type == 'assets-changed'
+  | extend name=names[0], address=addresses[0]
+  | where (id in (highValueAssets)) or (address in (highValueAssets)) or (name in (highValueAssets))
+entityMappings:
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: address
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: name
+customDetails:
+- ID: id
+eventGroupingSettings:
+  aggregationKind: AlertPerResult
+alertDetailsOverride:
+  alertDisplayNameFormat: '(Rumble) High value network asset changed: {{address}}'
+  alertDescriptionFormat: 'Rumble Network Discovery has detected that the host at {{address}} ({{name}}) has changed as of {{TimeGenerated}}.'
+  alertTacticsColumnName: null
+  alertSeverityColumnName: null
+version: 1.0.0

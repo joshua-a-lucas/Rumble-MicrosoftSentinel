@@ -1,0 +1,47 @@
+id: 14303684-bdc0-4946-92a7-037b07f9109e
+name: (Rumble) New network assets discovered
+kind: Scheduled
+description: |
+  'Detects when Rumble Network Discovery has found a new device connected to the network.'
+severity: Medium
+requiredDataConnectors:
+  - connectorId: RumbleNetworkDiscovery
+    dataTypes:
+      - RumbleAlerts_CL
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Reconnaissance
+  - ResourceDevelopment
+  - CommandAndControl
+  - LateralMovement
+relevantTechniques:
+  - T1590
+  - T1584
+  - T1571
+  - T1021
+query: |
+  RumbleAlerts
+  | where event_type == 'new-assets-found'
+  | extend name=names[0], address=addresses[0]
+entityMappings:
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: address
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: name
+customDetails:
+- ID: id
+eventGroupingSettings:
+  aggregationKind: SingleAlert
+alertDetailsOverride:
+  alertDisplayNameFormat: '(Rumble) New network assets discovered'
+  alertDescriptionFormat: 'Rumble Network Discovery has detected new assets on the network as of {{TimeGenerated}}.'
+  alertTacticsColumnName: null
+  alertSeverityColumnName: null
+version: 1.0.0

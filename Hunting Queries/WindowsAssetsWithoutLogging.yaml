@@ -1,0 +1,33 @@
+id: 0a1c4d61-c12a-4f2e-bac4-190bd051ec3f
+name: (Rumble) Windows assets without security event logging
+description: 'Lists all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week.'
+requiredDataConnectors:
+  - connectorId: RumbleNetworkDiscovery
+    dataTypes:
+      - RumbleAssets_CL
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvents
+tactics:
+  - InhibitResponseFunction
+relevantTechniques:
+  - T0804
+query: |
+  // List all Windows assets that have not sent security event logs to Microsoft Sentinel in the last week
+  let Time = toscalar(RumbleAssets_CL | summarize max(TimeGenerated));
+  //let AssetsWithLogging = datatable(name:string)['JOSH-DESKTOP','LINUX-MINT','BOB-LAPTOP'];
+  let AssetsWithLogging = (Heartbeat | where TimeGenerated >= ago(7d) | distinct Computer | extend name=split(Computer, '.')[0]);
+  RumbleAssets
+  | where TimeGenerated >= Time
+  | where os contains 'Windows'
+  | project id,org_name,site_name,alive,scanned,name=split(tostring(names[0]), '.')[0],address=addresses[0], domains, type, os, hw
+  | where name !in(AssetsWithLogging)
+entityMappings:
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: address
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: name
